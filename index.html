@@ -1,0 +1,116 @@
+<html>
+  <head>
+    <script src="tmi.min.js">//TMI.js script</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.2.2/browser/pixi.js"></script>
+  </head>
+  <body>
+    <div id="body">
+      <div id="canvas"></div>
+    </div>
+    <script>
+
+      PIXI.settings.SORTABLE_CHILDREN = true;
+      const WIDTH = 1920;
+      const HEIGHT = 1080;
+      const app = new PIXI.Application({
+          width: WIDTH, height: HEIGHT,
+          resolution: window.devicePixelRatio || 1, sharedTicker: true,
+          backgroundAlpha: 0
+      });
+      const loader = PIXI.Loader.shared;
+      const customer = new PIXI.Sprite();
+      const customerSprites = [];
+      const lurkersQueue = [];
+      let currentAnimation;
+
+      loader.add('mari', 'assets/customer.png');
+      loader.load((loader, resources) => {
+        Object.keys(resources).forEach(resourceName => {
+          customerSprites.push(resources[resourceName].texture);
+        });
+      });
+
+      document.getElementById("canvas").appendChild(app.view);
+      setupClient();
+
+      function setupClient() { // Setup TMI to listen to Twitch Chat
+        const client = new tmi.Client({ // Setup TMI Client with the channel(s) you want to listen to
+          channels: ["codingvibe"],
+        });
+
+        client.connect(); // Connect to the channel
+
+        client.on("message", (channel, tags, message, self) => { // Run each time a comment comes in
+          let name = tags["display-name"]; // Commenter's Name
+
+          if (message === "!lurk") {
+            lurkersQueue.push(name);
+          }
+        });
+      }
+
+      let ticker = PIXI.Ticker.shared;
+      ticker.add(function (time) {
+        if (currentAnimation) {
+          const curMovement = currentAnimation.animations[0];
+          if (curMovement.type === "MOVE_UP") {
+            currentAnimation.container.y -= curMovement.stepSize;
+          } else if (curMovement.type === "MOVE_DOWN") {
+            currentAnimation.container.y += curMovement.stepSize;
+          }
+          if (curMovement.stopCondition(currentAnimation.container)) {
+            currentAnimation.animations.shift();
+            if (currentAnimation.animations.length === 0) {
+              currentAnimation = null;
+            }
+          }
+        } else if (lurkersQueue.length > 0) {
+          const name = lurkersQueue.pop();
+          const nameTexture = new PIXI.Text(name , {fontFamily : 'Verdana', fontSize: 20, fill : 0xE5E8B6, align : 'center'});
+          nameTexture.y = 0;
+          customer.texture = customerSprites[Math.floor(Math.random() * customerSprites.length)];
+          customer.x = 0;
+          customer.y = nameTexture.height+5;
+          const container = new PIXI.Container();
+          container.addChild(nameTexture);
+          container.addChild(customer);
+          nameTexture.x = Math.floor((container.width - nameTexture.width)/2)
+          container.y = HEIGHT;
+          container.x = WIDTH - container.width;
+          app.stage.addChild(container);
+          currentAnimation = {
+            container: container,
+            animations: getLurkAnimation()
+          }
+        }
+        app.renderer.render(app.stage);
+      });
+
+      function getLurkAnimation(container) {
+        const pauseTime = Date.now() + 5*1000;
+        return [
+          {
+              type: "MOVE_UP",
+              stopCondition: (container) => {
+                return (container.y <= (HEIGHT - container.height));
+              },
+              stepSize: 2
+          },
+          {
+              type: "PAUSE",
+              stopCondition: (container) => {
+                return Date.now() > pauseTime
+              }
+          },
+          {
+              type: "MOVE_DOWN",
+              stopCondition: (container) => {
+                return (container.y >= HEIGHT);
+              },
+              stepSize: 2
+          }
+        ]
+      }
+    </script>
+  </body>
+</html>
