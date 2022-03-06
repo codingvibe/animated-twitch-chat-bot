@@ -13,7 +13,7 @@ var app = express();
 const APP_PORT = 8080;
 const WEBSOCKET_PORT = 9090;
  
-const whitelist = ['http://localhost', 'http://localhost:8000']
+const whitelist = ['http://localhost', 'http://localhost:8000', 'https://twitchoverlay.codingvibe.dev']
 var corsOptions = {
   origin: function (origin, callback) {
     if (whitelist.indexOf(origin) !== -1) {
