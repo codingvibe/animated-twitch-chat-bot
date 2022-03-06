@@ -11,7 +11,6 @@ dotenv.config();
 
 var app = express();
 const APP_PORT = 8080;
-const WEBSOCKET_PORT = 9090;
  
 const whitelist = ['http://localhost', 'http://localhost:8000', 'https://twitchoverlay.codingvibe.dev']
 var corsOptions = {
@@ -25,16 +24,12 @@ var corsOptions = {
 }
 app.use(cors(corsOptions))
 var server = http.createServer(app)
-server.listen(WEBSOCKET_PORT)
+server.listen(APP_PORT)
 
 app.get('/ticket', (req, res) => {
   const origin = req.get('origin');
   const ticket = generateTicket(origin);
   res.send({ticket:ticket})
-})
-
-app.listen(APP_PORT, () => {
-  console.log(`HTTP server listening on ${APP_PORT}`)
 })
 
 //initialize the WebSocket server instance

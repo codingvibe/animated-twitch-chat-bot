@@ -9,7 +9,6 @@
     <script type="module">
       const websocketTicket = await getWebsocketTicket();
       const backendSocket = openBackendWebsocket(websocketTicket);
-      const backendSocket2 = openBackendWebsocket(websocketTicket);
 
       PIXI.settings.SORTABLE_CHILDREN = true;
       const WIDTH = 1920;
@@ -105,7 +104,7 @@
       }
 
       function openBackendWebsocket(ticket) {
-        const backendSocket = new WebSocket(`ws://localhost:9090/?ticket=${ticket}`);
+        const backendSocket = new WebSocket(`ws://localhost:8080/?ticket=${ticket}`);
 
         backendSocket.onmessage = (event) => {
           const eventData = JSON.parse(event.data);
