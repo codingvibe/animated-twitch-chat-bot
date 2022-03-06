@@ -1,0 +1,10 @@
+[Unit]
+Description=Bot for Twitch Chat
+
+[Service]
+WorkingDirectory=/root/animated-twitch-chat-bot/api/
+ExecStart=node server.js
+Restart=true
+
+[Install]
+WantedBy=multi-user.target
