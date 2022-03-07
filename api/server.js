@@ -8,11 +8,29 @@ import express from 'express';
 import crypto from 'crypto';
 
 dotenv.config();
-
-var app = express();
 const APP_PORT = 8080;
- 
-const whitelist = ['http://localhost', 'http://localhost:8000', 'https://twitchoverlay.codingvibe.dev']
+const CLIENT_ID = process.env.CLIENT_ID
+const CLIENT_SECRET = process.env.CLIENT_SECRET
+const ACCESS_TOKEN = process.env.ACCESS_TOKEN
+const REFRESH_TOKEN = process.env.REFRESH_TOKEN
+const DEPLOYED = process.env.DEPLOYED
+
+var app;
+if (DEPLOYED) {
+  const privateKey = fs.readFileSync('/etc/letsencrypt/live/twitchbotapi.codingvibe.dev/privkey.pem');
+  const certificate = fs.readFileSync('/etc/letsencrypt/live/twitchbotapi.codingvibe.dev/fullchain.pem');
+
+  const credentials = {key: privateKey, cert: certificate};
+  app = express.createServer(credentials);
+} else {
+  app = express();
+}
+
+const whitelist = ['https://twitchoverlay.codingvibe.dev']
+if (!DEPLOYED) {
+  whitelist.push('http://localhost:8000');
+}
+
 var corsOptions = {
   origin: function (origin, callback) {
     if (whitelist.indexOf(origin) !== -1) {
@@ -57,10 +75,6 @@ wss.on('connection', (ws, request) => {
 });
 
 setupTmiClient();
-const CLIENT_ID = process.env.CLIENT_ID
-const CLIENT_SECRET = process.env.CLIENT_SECRET
-const ACCESS_TOKEN = process.env.ACCESS_TOKEN
-const REFRESH_TOKEN = process.env.REFRESH_TOKEN
 let token = await getTwitchAuthToken(CLIENT_ID, CLIENT_SECRET, ACCESS_TOKEN, REFRESH_TOKEN);
 openTwitchWebsocket(token);
 

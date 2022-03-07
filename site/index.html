@@ -7,6 +7,7 @@
       <div id="canvas"></div>
     </div>
     <script type="module">
+      const backendServerUrl = '137.184.35.137';
       const websocketTicket = await getWebsocketTicket();
       const backendSocket = openBackendWebsocket(websocketTicket);
 
@@ -98,13 +99,13 @@
       }
 
       async function getWebsocketTicket() {
-        const response = await fetch('http://137.184.35.137:8080/ticket');
+        const response = await fetch(`http://${backendServerUrl}/ticket`);
         const data = await response.json();
         return data['ticket'];
       }
 
       function openBackendWebsocket(ticket) {
-        const backendSocket = new WebSocket(`ws://137.184.35.137:8080/?ticket=${ticket}`);
+        const backendSocket = new WebSocket(`ws://${backendServerUrl}/?ticket=${ticket}`);
 
         backendSocket.onmessage = (event) => {
           const eventData = JSON.parse(event.data);
