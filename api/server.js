@@ -3,9 +3,11 @@ import * as tmi from 'tmi.js';
 import { WebSocket } from 'ws';
 import dotenv from 'dotenv';
 import http from 'http';
+import https from 'https';
 import cors from 'cors';
 import express from 'express';
 import crypto from 'crypto';
+import fs from 'fs';
 
 dotenv.config();
 const APP_PORT = 8080;
@@ -15,16 +17,7 @@ const ACCESS_TOKEN = process.env.ACCESS_TOKEN
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN
 const DEPLOYED = process.env.DEPLOYED
 
-var app;
-if (DEPLOYED) {
-  const privateKey = fs.readFileSync('/etc/letsencrypt/live/twitchbotapi.codingvibe.dev/privkey.pem');
-  const certificate = fs.readFileSync('/etc/letsencrypt/live/twitchbotapi.codingvibe.dev/fullchain.pem');
-
-  const credentials = {key: privateKey, cert: certificate};
-  app = express.createServer(credentials);
-} else {
-  app = express();
-}
+const app = express();
 
 const whitelist = ['https://twitchoverlay.codingvibe.dev']
 if (!DEPLOYED) {
@@ -40,9 +33,20 @@ var corsOptions = {
     }
   }
 }
-app.use(cors(corsOptions))
-var server = http.createServer(app)
-server.listen(APP_PORT)
+
+app.use(cors(corsOptions));
+let server;
+if (DEPLOYED) {
+  const privateKey = fs.readFileSync('/etc/letsencrypt/live/twitchbotapi.codingvibe.dev/privkey.pem');
+  const certificate = fs.readFileSync('/etc/letsencrypt/live/twitchbotapi.codingvibe.dev/fullchain.pem');
+
+  const credentials = {key: privateKey, cert: certificate};
+  server = https.createServer(credentials, app);
+  server.listen(443)
+} else {
+  server = http.createServer(app)
+  server.listen(APP_PORT)
+}
 
 app.get('/ticket', (req, res) => {
   const origin = req.get('origin');
