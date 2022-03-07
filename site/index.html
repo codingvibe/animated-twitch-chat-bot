@@ -106,7 +106,7 @@
       }
 
       function openBackendWebsocket(ticket) {
-        const backendSocket = new WebSocket(`${backendServerUrl}/?ticket=${ticket}`);
+        const backendSocket = new WebSocket(`${backendServerWebsocket}/?ticket=${ticket}`);
 
         backendSocket.onmessage = (event) => {
           const eventData = JSON.parse(event.data);
