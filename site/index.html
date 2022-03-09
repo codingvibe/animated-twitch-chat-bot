@@ -15,9 +15,7 @@
         backendServerWebsocket = 'wss://twitchbotapi.codingvibe.dev';
       }
 
-      getWebsocketTicket().then((ticket)=> openBackendWebsocket(ticket));
-      //const websocketTicket = await getWebsocketTicket();
-      //const backendSocket = openBackendWebsocket(websocketTicket);
+      getWebsocketTicket().then((ticket) => openBackendWebsocket(ticket));
 
       PIXI.settings.SORTABLE_CHILDREN = true;
       const WIDTH = 1920;
