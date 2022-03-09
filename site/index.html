@@ -7,8 +7,13 @@
       <div id="canvas"></div>
     </div>
     <script type="module">
-      const backendServerUrl = 'https://twitchbotapi.codingvibe.dev';
-      const backendServerWebsocket = 'wss://twitchbotapi.codingvibe.dev';
+      let backendServerUrl = 'http://localhost:8080';
+      let backendServerWebsocket = 'ws://localhost:8080'
+      if (location.origin === 'https://twitchoverlay.codingvibe.dev') {
+        backendServerUrl = 'https://twitchbotapi.codingvibe.dev';
+        backendServerWebsocket = 'wss://twitchbotapi.codingvibe.dev';
+      }
+
       const websocketTicket = await getWebsocketTicket();
       const backendSocket = openBackendWebsocket(websocketTicket);
 
@@ -35,35 +40,14 @@
 
       document.getElementById("canvas").appendChild(app.view);
 
+      // Animation Processing
       let ticker = PIXI.Ticker.shared;
       ticker.add(function (time) {
         if (currentAnimation) {
-          const curMovement = currentAnimation.animations[0];
-          if (curMovement.type === "MOVE_UP") {
-            currentAnimation.container.y -= curMovement.stepSize;
-          } else if (curMovement.type === "MOVE_DOWN") {
-            currentAnimation.container.y += curMovement.stepSize;
-          }
-          if (curMovement.stopCondition(currentAnimation.container)) {
-            currentAnimation.animations.shift();
-            if (currentAnimation.animations.length === 0) {
-              currentAnimation = null;
-            }
-          }
+          processAnimation(currentAnimation);
         } else if (lurkersQueue.length > 0) {
           const name = lurkersQueue.pop();
-          // TODO: Outline text so it's more readable
-          const nameTexture = new PIXI.Text(name , {fontFamily : 'Verdana', fontSize: 20, fill : 0x000000, align : 'center'});
-          nameTexture.y = 0;
-          customer.texture = customerSprites[Math.floor(Math.random() * customerSprites.length)];
-          customer.x = 0;
-          customer.y = nameTexture.height+5;
-          const container = new PIXI.Container();
-          container.addChild(nameTexture);
-          container.addChild(customer);
-          nameTexture.x = Math.floor((container.width - nameTexture.width)/2)
-          container.y = HEIGHT;
-          container.x = WIDTH - container.width;
+          const container = createLurkCustomer(name);
           app.stage.addChild(container);
           currentAnimation = {
             container: container,
@@ -72,6 +56,36 @@
         }
         app.renderer.render(app.stage);
       });
+
+      function processAnimation(animation) {
+        const curMovement = currentAnimation.animations[0];
+        if (curMovement.type === "MOVE_UP") {
+          currentAnimation.container.y -= curMovement.stepSize;
+        } else if (curMovement.type === "MOVE_DOWN") {
+          currentAnimation.container.y += curMovement.stepSize;
+        }
+        if (curMovement.stopCondition(currentAnimation.container)) {
+          currentAnimation.animations.shift();
+          if (currentAnimation.animations.length === 0) {
+            currentAnimation = null;
+          }
+        }
+      }
+
+      function createLurkCustomer(name) {
+        const nameTexture = new PIXI.Text(name , {fontFamily : 'Verdana', fontSize: 28, fill : 0xffc182, align : 'center', dropShadow: true, dropShadowDistance: 3});
+        nameTexture.y = 0;
+        customer.texture = customerSprites[Math.floor(Math.random() * customerSprites.length)];
+        customer.x = 0;
+        customer.y = nameTexture.height+5;
+        const container = new PIXI.Container();
+        container.addChild(nameTexture);
+        container.addChild(customer);
+        nameTexture.x = Math.floor((container.width - nameTexture.width)/2)
+        container.y = HEIGHT;
+        container.x = WIDTH - container.width;
+        return container;
+      }
 
       function getLurkAnimation(container) {
         const pauseTime = Date.now() + 5*1000;
@@ -99,6 +113,7 @@
         ]
       }
 
+      // Back end Websocket Setup and comms
       async function getWebsocketTicket() {
         const response = await fetch(`${backendServerUrl}/ticket`);
         const data = await response.json();
@@ -111,17 +126,7 @@
         backendSocket.onmessage = (event) => {
           const eventData = JSON.parse(event.data);
           console.log(eventData);
-          if (eventData.type == "PONG") {
-            //console.log ("pong boiz");
-          } else if (eventData.type == "MESSAGE") {
-            const topic = eventData.data.topic.split("\.")[0];
-            if (!(topic in messageTypeToProcessor)) {
-              console.log(`unhandled message topic ${topic}`);
-              return;
-            }
-            const processor = messageTypeToProcessor[topic]
-            processor(JSON.parse(eventData.data.message));
-          } else if (eventData.type == "CHAT_COMMAND") {
+          if (eventData.type == "CHAT_COMMAND") {
               switch(eventData.message.command) {
                 case "lurk":
                   lurkersQueue.push(eventData.message.username);
