@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2022-03-11T01:20:32.366Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36" etag="0HEeeKG1MD_sD07FqBdh" version="17.0.0" type="github">
+<mxfile host="app.diagrams.net" modified="2022-03-11T04:11:12.508Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36" etag="nStp8IEtwmv21wBNTLHE" version="17.0.0" type="github">
   <diagram id="FBk9rFEy_V9g7Qttlfk-" name="Page-1">
     <mxGraphModel dx="2031" dy="1089" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
@@ -56,7 +56,7 @@
         <mxCell id="-6rClQVq4S_JQpJwZ2Rc-14" value="HTTPS Webserver" style="verticalLabelPosition=bottom;aspect=fixed;html=1;verticalAlign=top;strokeColor=none;shape=mxgraph.citrix.xenapp_server;fillColor=#66B2FF;gradientColor=#0066CC;fontSize=14;" vertex="1" parent="1">
           <mxGeometry x="772.0000000000001" y="190" width="76" height="89" as="geometry" />
         </mxCell>
-        <mxCell id="-6rClQVq4S_JQpJwZ2Rc-15" value="Weboscket(PubSub topic)" style="edgeStyle=none;rounded=0;html=1;jettySize=auto;orthogonalLoop=1;fontSize=14;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=default;startArrow=classic;startFill=1;" edge="1" parent="1" source="-6rClQVq4S_JQpJwZ2Rc-23" target="-6rClQVq4S_JQpJwZ2Rc-18">
+        <mxCell id="-6rClQVq4S_JQpJwZ2Rc-15" value="Websocket(PubSub topic)" style="edgeStyle=none;rounded=0;html=1;jettySize=auto;orthogonalLoop=1;fontSize=14;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=default;startArrow=classic;startFill=1;" edge="1" parent="1" source="-6rClQVq4S_JQpJwZ2Rc-23" target="-6rClQVq4S_JQpJwZ2Rc-18">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="320" y="830" as="sourcePoint" />
           </mxGeometry>
@@ -74,10 +74,10 @@
         <mxCell id="-6rClQVq4S_JQpJwZ2Rc-18" value="HTTPS Web Server" style="verticalLabelPosition=top;aspect=fixed;html=1;verticalAlign=bottom;strokeColor=none;shape=mxgraph.citrix.cache_server;fillColor=#66B2FF;gradientColor=#0066CC;fontSize=14;labelPosition=center;align=center;" vertex="1" parent="1">
           <mxGeometry x="287" y="185.75" width="71" height="97.5" as="geometry" />
         </mxCell>
-        <mxCell id="-6rClQVq4S_JQpJwZ2Rc-19" style="edgeStyle=none;rounded=0;html=1;startSize=10;endSize=10;jettySize=auto;orthogonalLoop=1;fontSize=14;endArrow=none;endFill=0;strokeWidth=2;" edge="1" parent="1" source="-6rClQVq4S_JQpJwZ2Rc-20" target="-6rClQVq4S_JQpJwZ2Rc-21">
+        <mxCell id="-6rClQVq4S_JQpJwZ2Rc-19" value="Video Stream" style="edgeStyle=none;rounded=0;html=1;startSize=10;endSize=10;jettySize=auto;orthogonalLoop=1;fontSize=14;endArrow=none;endFill=0;strokeWidth=2;startArrow=classic;startFill=1;" edge="1" parent="1" source="-6rClQVq4S_JQpJwZ2Rc-20" target="-6rClQVq4S_JQpJwZ2Rc-21">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="-6rClQVq4S_JQpJwZ2Rc-20" value="" style="verticalLabelPosition=bottom;aspect=fixed;html=1;verticalAlign=top;strokeColor=none;shape=mxgraph.citrix.switch;fillColor=#66B2FF;gradientColor=#0066CC;fontSize=14;" vertex="1" parent="1">
+        <mxCell id="-6rClQVq4S_JQpJwZ2Rc-20" value="Twitch" style="verticalLabelPosition=bottom;aspect=fixed;html=1;verticalAlign=top;strokeColor=none;shape=mxgraph.citrix.switch;fillColor=#66B2FF;gradientColor=#0066CC;fontSize=14;" vertex="1" parent="1">
           <mxGeometry x="740" y="633" width="92" height="41.5" as="geometry" />
         </mxCell>
         <mxCell id="-6rClQVq4S_JQpJwZ2Rc-21" value="OBS Client&lt;br&gt;" style="verticalLabelPosition=top;aspect=fixed;html=1;verticalAlign=bottom;strokeColor=none;shape=mxgraph.citrix.thin_client;fillColor=#66B2FF;gradientColor=#0066CC;fontSize=14;labelPosition=center;align=center;" vertex="1" parent="1">
@@ -95,7 +95,7 @@
             <mxPoint x="832" y="695.8167293233084" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="-6rClQVq4S_JQpJwZ2Rc-25" style="edgeStyle=none;rounded=0;html=1;startSize=10;endSize=10;jettySize=auto;orthogonalLoop=1;fontSize=14;endArrow=none;endFill=0;strokeWidth=2;entryX=0.051;entryY=0.299;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.91;exitY=0.522;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="-6rClQVq4S_JQpJwZ2Rc-23" target="-6rClQVq4S_JQpJwZ2Rc-20">
+        <mxCell id="-6rClQVq4S_JQpJwZ2Rc-25" style="edgeStyle=none;rounded=0;html=1;startSize=10;endSize=10;jettySize=auto;orthogonalLoop=1;fontSize=14;endArrow=none;endFill=0;strokeWidth=2;entryX=0.051;entryY=0.299;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.91;exitY=0.522;exitDx=0;exitDy=0;exitPerimeter=0;startArrow=classic;startFill=1;" edge="1" parent="1" source="-6rClQVq4S_JQpJwZ2Rc-23" target="-6rClQVq4S_JQpJwZ2Rc-20">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="820.91" y="905.5181660899652" as="sourcePoint" />
             <mxPoint x="569.9966217516841" y="680" as="targetPoint" />
