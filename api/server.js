@@ -10,15 +10,17 @@ import crypto from 'crypto';
 import fs from 'fs';
 
 dotenv.config();
+
 const APP_PORT = 8080;
-const CLIENT_ID = process.env.CLIENT_ID
-const CLIENT_SECRET = process.env.CLIENT_SECRET
-const ACCESS_TOKEN = process.env.ACCESS_TOKEN
-const REFRESH_TOKEN = process.env.REFRESH_TOKEN
-const DEPLOYED = process.env.DEPLOYED
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
+const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
+const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
+const DEPLOYED = process.env.DEPLOYED;
+
+/////////////////////////// Set Up Server ///////////////////////////
 
 const app = express();
-
 const whitelist = ['https://twitchoverlay.codingvibe.dev']
 if (!DEPLOYED) {
   whitelist.push('http://localhost:8000');
@@ -48,13 +50,16 @@ if (DEPLOYED) {
   server.listen(APP_PORT)
 }
 
+/////////////////////////// Set up REST ///////////////////////////
+
 app.get('/ticket', (req, res) => {
   const origin = req.get('origin');
   const ticket = generateTicket(origin);
   res.send({ticket:ticket})
 })
 
-//initialize the WebSocket server instance
+/////////////////////////// Set up Websocket ///////////////////////////
+
 const wss = new WebSocket.Server({server: server});
 
 const currentConnections = [];
@@ -62,6 +67,10 @@ const activeTickets = {};
 const TICKET_EXPIRATION = 60*1000;
 const CHAT_COMMAND = "CHAT_COMMAND";
 const POINTS_REDEMPTION = "POINTS_REDEMPTION";
+
+setupTmiClient();
+let token = await getTwitchAuthToken(CLIENT_ID, CLIENT_SECRET, ACCESS_TOKEN, REFRESH_TOKEN);
+openTwitchWebsocket(token);
 
 wss.on('connection', (ws, request) => {
   const origin = getOriginFromHeaders(request.rawHeaders);
@@ -78,9 +87,7 @@ wss.on('connection', (ws, request) => {
   currentConnections.push(ws);
 });
 
-setupTmiClient();
-let token = await getTwitchAuthToken(CLIENT_ID, CLIENT_SECRET, ACCESS_TOKEN, REFRESH_TOKEN);
-openTwitchWebsocket(token);
+/////////////////////////// Web Socket Validation ///////////////////////////
 
 function getOriginFromHeaders(headers) {
   for (let i = 0; i < headers.length; i++) {
@@ -119,6 +126,18 @@ function generateTicket(origin) {
   return ticket;
 }
 
+const ticketCleanup = setInterval(() => {
+  const expiredTickets = []
+  Object.keys(activeTickets).forEach(ticket => {
+    if (activeTickets[ticket].expiration > Date.now()) {
+      expiredTickets.push(ticket);
+    }
+  })
+  expiredTickets.forEach(ticket => delete activeTickets[ticket])
+}, 1000);
+
+/////////////////////////// Listen to Twitch Chat ///////////////////////////
+
 function setupTmiClient() { // Setup TMI to listen to Twitch Chat
   const client = new tmi.Client({ // Setup TMI Client with the channel(s) you want to listen to
     channels: ["codingvibe"],
@@ -135,15 +154,7 @@ function setupTmiClient() { // Setup TMI to listen to Twitch Chat
   });
 }
 
-// TODO: call this when getting a 403
-async function getTwitchAuthToken(clientId, clientSecret, accessToken, refreshToken) {
-  const authUrl = `https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`
-  const response = await axios.post(authUrl);
-  if (response.status > 299) {
-    console.error(`Ding dangit, had a dang ol issue with Twitch. ${response.data}`)
-  }
-  return response.data.access_token;
-}
+/////////////////////////// Process pub/sub messages ///////////////////////////
 
 const messageTypeToProcessor = {
   "channel-points-channel-v1": processChannelPoints
@@ -160,6 +171,23 @@ function processChannelPoints(data) {
       console.log(`got this reward ${redemptionType}`)
       blastMessage(POINTS_REDEMPTION, {'username': name, 'command': redemptionType});
   }
+}
+
+/////////////////////////// Web Socket Communication ///////////////////////////
+
+function blastMessage(type, message) {
+  currentConnections.forEach(ws => ws.send(JSON.stringify({'type': type, 'message': message})));
+}
+
+/////////////////////////// Talk to Twitch API ///////////////////////////
+
+async function getTwitchAuthToken(clientId, clientSecret, accessToken, refreshToken) {
+  const authUrl = `https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`
+  const response = await axios.post(authUrl);
+  if (response.status > 299) {
+    console.error(`Ding dangit, had a dang ol issue with Twitch. ${response.data}`)
+  }
+  return response.data.access_token;
 }
 
 function openTwitchWebsocket(oauthToken) {
@@ -203,17 +231,3 @@ function openTwitchWebsocket(oauthToken) {
 
   return twitchSocket;
 }
-
-function blastMessage(type, message) {
-  currentConnections.forEach(ws => ws.send(JSON.stringify({'type': type, 'message': message})));
-}
-
-const ticketCleanup = setInterval(() => {
-  const expiredTickets = []
-  Object.keys(activeTickets).forEach(ticket => {
-    if (activeTickets[ticket].expiration > Date.now()) {
-      expiredTickets.push(ticket);
-    }
-  })
-  expiredTickets.forEach(ticket => delete activeTickets[ticket])
-}, 1000)
