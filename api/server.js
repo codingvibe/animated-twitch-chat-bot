@@ -148,7 +148,7 @@ function setupTmiClient() { // Setup TMI to listen to Twitch Chat
   client.on("message", (channel, tags, message, self) => { // Run each time a comment comes in
     let name = tags["display-name"]; // Commenter's Name
 
-    if (message === "!lurk") {
+    if (message && message.includes("!lurk")) {
       blastMessage(CHAT_COMMAND, {'username': name, 'command': 'lurk'});
     }
   });
@@ -191,7 +191,7 @@ async function getTwitchAuthToken(clientId, clientSecret, accessToken, refreshTo
 }
 
 function openTwitchWebsocket(oauthToken) {
-  const twitchSocket = new WebSocket("wss://pubsub-edge.twitch.tv");
+  let twitchSocket = new WebSocket("wss://pubsub-edge.twitch.tv");
 
   let interval;
   twitchSocket.onopen = (data) => {
@@ -212,6 +212,7 @@ function openTwitchWebsocket(oauthToken) {
     if (interval) {
       clearInterval(interval);
     }
+    twitchSocket = new WebSocket("wss://pubsub-edge.twitch.tv");
   }
 
   twitchSocket.onmessage = (event) => {
