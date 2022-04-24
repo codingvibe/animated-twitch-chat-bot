@@ -81,6 +81,7 @@ wss.on('connection', (ws, request) => {
   }
   if (!validateTicket(request.url, origin)) {
     console.log(`invalid ticket ${request.url} ${origin}`);
+    console.log(activeTickets);
     ws.close();
     return;
   }
@@ -129,7 +130,7 @@ function generateTicket(origin) {
 const ticketCleanup = setInterval(() => {
   const expiredTickets = []
   Object.keys(activeTickets).forEach(ticket => {
-    if (activeTickets[ticket].expiration > Date.now()) {
+    if (activeTickets[ticket].expiration < Date.now()) {
       expiredTickets.push(ticket);
     }
   })

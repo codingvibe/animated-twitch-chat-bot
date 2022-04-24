@@ -27,15 +27,47 @@
       });
       const loader = PIXI.Loader.shared;
       const customer = new PIXI.Sprite();
+      const drinkSpeechBubble = new PIXI.Sprite();
+      const drinkSpeechContainer = new PIXI.Container();
+      drinkSpeechContainer.position.set(1630, 527);
+      app.stage.addChild(drinkSpeechContainer);
+      let orderDrink;
       const customerSprites = [];
+      const orderDrinkSprites = [];
       const lurkersQueue = [];
+      const drinkQueue = [];
       let currentAnimation;
 
       loader.add('mari', 'assets/customer.png');
+      loader.add('drink-speech-bubble', 'assets/drink-speech-bubble.png');
+      // Order Drink Animation
+      const ORDER_DRINK_FRAMES = 60;
+      for (let i = 1; i <= ORDER_DRINK_FRAMES; i++) {
+        loader.add(`cafe${i}`, `assets/order-drink/cafe${i}.png`);
+      }
       loader.load((loader, resources) => {
         Object.keys(resources).forEach(resourceName => {
-          customerSprites.push(resources[resourceName].texture);
+          if (resourceName.startsWith("cafe")) {
+            orderDrinkSprites.push(resources[resourceName].texture);
+          } else {
+            customerSprites.push(resources[resourceName].texture);
+          }
         });
+        drinkSpeechBubble.texture = resources['drink-speech-bubble'].texture;
+        orderDrink = new PIXI.AnimatedSprite(orderDrinkSprites);
+        orderDrink.height = 384;
+        orderDrink.width = 384;
+        orderDrink.position.set(1241, 526);
+        //orderDrink.position.set(1241, 526);
+        orderDrink.animationSpeed = 0.25;
+        orderDrink.anchor.set(0);
+        orderDrink.loop = false;
+        orderDrink.onComplete = () => {
+          while (drinkSpeechContainer.children && drinkSpeechContainer.children.length > 0) {
+            drinkSpeechContainer.removeChild(drinkSpeechContainer.children[0]);
+          };
+        }
+        app.stage.addChild(orderDrink);
       });
 
       document.getElementById("canvas").appendChild(app.view);
@@ -53,6 +85,9 @@
             container: container,
             animations: getLurkAnimation()
           }
+        }
+        if (drinkQueue.length > 0 && !orderDrink.playing) {
+          playOrderDrink(drinkQueue.pop());
         }
         app.renderer.render(app.stage);
       });
@@ -113,6 +148,16 @@
         ]
       }
 
+      function playOrderDrink(username) {
+        const text = `Order for\n${username}\nteleportin'\nyour way!`;
+        const nameTexture = new PIXI.Text(text , {fontFamily : 'Verdana', fontSize: 32, fill : 0xffc182, align : 'left', dropShadow: true, dropShadowDistance: 3});
+        nameTexture.y = 20;
+        nameTexture.x = 30;
+        drinkSpeechContainer.addChild(drinkSpeechBubble);
+        drinkSpeechContainer.addChild(nameTexture);
+        orderDrink.gotoAndPlay(0);
+      }
+
       // Back end Websocket Setup and comms
       async function getWebsocketTicket() {
         const response = await fetch(`${backendServerUrl}/ticket`);
@@ -135,6 +180,9 @@
               switch(eventData.message.command) {
                 case "Boop!":
                   lurkersQueue.push(eventData.message.username);
+                  break;
+                case "Order a drink (it a test)":
+                  drinkQueue.push(eventData.message.username);
                   break;
                 default:
                   console.log(`got a points redemption for ${eventData.message.command}`)
