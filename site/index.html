@@ -148,6 +148,7 @@
       }
 
       function playOrderDrink(username) {
+        // TODO: PLAY A SOUND TOO
         const text = `Order for\n${username}\nteleportin'\nyour way!`;
         const nameTexture = new PIXI.Text(text , {fontFamily : 'Verdana', fontSize: 32, fill : 0xffc182, align : 'left', dropShadow: true, dropShadowDistance: 3});
         nameTexture.y = 20;
@@ -180,7 +181,7 @@
                 case "Boop!":
                   lurkersQueue.push(eventData.message.username);
                   break;
-                case "Order a drink (it a test)":
+                case "Order a coffee!":
                   drinkQueue.push(eventData.message.username);
                   break;
                 default:
