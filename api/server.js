@@ -69,8 +69,7 @@ const CHAT_COMMAND = "CHAT_COMMAND";
 const POINTS_REDEMPTION = "POINTS_REDEMPTION";
 
 setupTmiClient();
-let token = await getTwitchAuthToken(CLIENT_ID, CLIENT_SECRET, ACCESS_TOKEN, REFRESH_TOKEN);
-openTwitchWebsocket(token);
+openTwitchWebsocket();
 
 wss.on('connection', (ws, request) => {
   const origin = getOriginFromHeaders(request.rawHeaders);
@@ -191,29 +190,32 @@ async function getTwitchAuthToken(clientId, clientSecret, accessToken, refreshTo
   return response.data.access_token;
 }
 
-function openTwitchWebsocket(oauthToken) {
-  let twitchSocket = new WebSocket("wss://pubsub-edge.twitch.tv");
+async function openTwitchWebsocket() {
+  const token = await getTwitchAuthToken(CLIENT_ID, CLIENT_SECRET, ACCESS_TOKEN, REFRESH_TOKEN);
+  const twitchSocket = new WebSocket("wss://pubsub-edge.twitch.tv");
 
   let interval;
   twitchSocket.onopen = (data) => {
+    console.log(`opening connection to Twitch with token ${token}`);
     twitchSocket.send(JSON.stringify({
       "type": "LISTEN",
       "data": {
         "topics": ["channel-points-channel-v1.754502464"],
-        "auth_token": oauthToken
+        "auth_token": token
       }
     }));
 
     interval = setInterval(() => {
       twitchSocket.send('{"type": "PING"}');
-    },3000);
+    }, 3000);
   }
 
   twitchSocket.onclose = () => {
+    console.log("Connection closed! Attempting to reopen...");
     if (interval) {
       clearInterval(interval);
     }
-    twitchSocket = new WebSocket("wss://pubsub-edge.twitch.tv");
+    openTwitchWebsocket();
   }
 
   twitchSocket.onmessage = (event) => {
@@ -230,6 +232,4 @@ function openTwitchWebsocket(oauthToken) {
       processor(JSON.parse(eventData.data.message));
     }
   }
-
-  return twitchSocket;
 }
