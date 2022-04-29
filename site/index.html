@@ -2,6 +2,7 @@
 <html>
   <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.2.2/browser/pixi.js"></script>
+    <script src="https://unpkg.com/@pixi/sound/dist/pixi-sound.js"></script>
   </head>
   <body>
     <div id="body">
@@ -25,6 +26,7 @@
           resolution: window.devicePixelRatio || 1, sharedTicker: true,
           backgroundAlpha: 0
       });
+      PIXI.sound.add('order-drink', 'assets/audio/order-coffee-noise.mp3');
       const loader = PIXI.Loader.shared;
       const customer = new PIXI.Sprite();
       const drinkSpeechBubble = new PIXI.Sprite();
@@ -149,6 +151,7 @@
 
       function playOrderDrink(username) {
         // TODO: PLAY A SOUND TOO
+        PIXI.sound.play('order-drink')
         const text = `Order for\n${username}\nteleportin'\nyour way!`;
         const nameTexture = new PIXI.Text(text , {fontFamily : 'Verdana', fontSize: 32, fill : 0xffc182, align : 'left', dropShadow: true, dropShadowDistance: 3});
         nameTexture.y = 20;
@@ -181,7 +184,7 @@
                 case "Boop!":
                   lurkersQueue.push(eventData.message.username);
                   break;
-                case "Order a coffee!":
+                case "Order a Coffee!":
                   drinkQueue.push(eventData.message.username);
                   break;
                 default:
