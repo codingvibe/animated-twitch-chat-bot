@@ -11,7 +11,7 @@ import fs from 'fs';
 
 dotenv.config();
 
-const APP_PORT = 8080;
+const APP_PORT = 9090;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
@@ -44,7 +44,7 @@ if (DEPLOYED) {
 
   const credentials = {key: privateKey, cert: certificate};
   server = https.createServer(credentials, app);
-  server.listen(443)
+  server.listen(APP_PORT)
 } else {
   server = http.createServer(app)
   server.listen(APP_PORT)
@@ -163,14 +163,8 @@ const messageTypeToProcessor = {
 function processChannelPoints(data) {
   const redemptionType = data.data.redemption.reward.title;
   const name = data.data.redemption.user.display_name;
-  switch (redemptionType) {
-    case "Highlight My Message":
-      console.log("got a highlight my message event");
-      break;
-    default:
-      console.log(`got this reward ${redemptionType}`)
-      blastMessage(POINTS_REDEMPTION, {'username': name, 'command': redemptionType});
-  }
+  console.log(`got this reward ${redemptionType}`)
+  blastMessage(POINTS_REDEMPTION, {'username': name, 'command': redemptionType});
 }
 
 /////////////////////////// Web Socket Communication ///////////////////////////
