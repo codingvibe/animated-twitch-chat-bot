@@ -16,7 +16,30 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
+const EVENT_SUB_SECRET = process.env.EVENT_SUB_SECRET;
 const DEPLOYED = process.env.DEPLOYED;
+const PREFS_URL = process.env.PREFS_URL;
+const PREFS_CACHE_TTL = process.env.PREFS_CACHE_TTL || 5*60*1000;
+
+// Twitch Event Sub Notification request headers
+const TWITCH_MESSAGE_ID = 'Twitch-Eventsub-Message-Id'.toLowerCase();
+const TWITCH_MESSAGE_TIMESTAMP = 'Twitch-Eventsub-Message-Timestamp'.toLowerCase();
+const TWITCH_MESSAGE_SIGNATURE = 'Twitch-Eventsub-Message-Signature'.toLowerCase();
+const MESSAGE_TYPE = 'Twitch-Eventsub-Message-Type'.toLowerCase();
+
+// Twitch Event Sub Notification message types
+const MESSAGE_TYPE_VERIFICATION = 'webhook_callback_verification';
+const MESSAGE_TYPE_NOTIFICATION = 'notification';
+const MESSAGE_TYPE_REVOCATION = 'revocation';
+
+// Twitch Event Sub Notification subscription types
+const STREAM_ONLINE = "stream.online";
+
+// user prefs cache
+const userPrefs = {};
+
+// Users Chatting cache
+const chatters = new Set();
 
 /////////////////////////// Set Up Server ///////////////////////////
 
@@ -36,7 +59,12 @@ var corsOptions = {
   }
 }
 
-app.use(cors(corsOptions));
+
+app.use([
+  express.raw({ type: 'application/json'}), // Need raw message body for signature verification
+  cors(corsOptions) // CORS because I'm coding this on stream and NOT doing CORS is cringe
+]);
+
 let server;
 if (DEPLOYED) {
   const privateKey = fs.readFileSync('/etc/letsencrypt/live/twitchbotapi.codingvibe.dev/privkey.pem');
@@ -44,18 +72,73 @@ if (DEPLOYED) {
 
   const credentials = {key: privateKey, cert: certificate};
   server = https.createServer(credentials, app);
-  server.listen(APP_PORT)
+  server.listen(APP_PORT);
 } else {
-  server = http.createServer(app)
-  server.listen(APP_PORT)
+  server = http.createServer(app);
+  server.listen(APP_PORT);
 }
+
+/*
+TODO:
+- test start-notifications
+- get the speech bubble working
+*/
 
 /////////////////////////// Set up REST ///////////////////////////
 
 app.get('/ticket', (req, res) => {
   const origin = req.get('origin');
   const ticket = generateTicket(origin);
-  res.send({ticket:ticket})
+  res.send({ticket:ticket});
+})
+
+app.post('/start-notifications', (req, res) => {
+  processNotificationsQueue();
+  res.sendStatus(204);
+})
+
+app.post('/eventsub', (req, res) => {
+  let hmac = HMAC_PREFIX + getHmac(EVENT_SUB_SECRET, req);
+
+  if (true === verifyMessage(hmac, req.headers[TWITCH_MESSAGE_SIGNATURE])) {
+    let notification = JSON.parse(req.body);
+
+    if (MESSAGE_TYPE_NOTIFICATION === req.headers[MESSAGE_TYPE]) {
+      if (notification && notification.subscription) {
+        switch (notification.subscription.type) {
+          case STREAM_ONLINE:
+            chatters.clear();
+            notificationQueue.clear();
+            queuePaused = true;
+            setTimeout(() => {
+              processNotificationsQueue();
+            }, 5*60*1000); // TODO, SET THIS TO SOMETHING LARGER
+            break;
+          default:
+            //do nothing;
+        }
+      }
+      res.sendStatus(204);
+    }
+    else if (MESSAGE_TYPE_VERIFICATION === req.headers[MESSAGE_TYPE]) {
+      res.status(200).send(notification.challenge);
+    }
+    else if (MESSAGE_TYPE_REVOCATION === req.headers[MESSAGE_TYPE]) {
+      res.sendStatus(204);
+
+      console.log(`${notification.subscription.type} notifications revoked!`);
+      console.log(`reason: ${notification.subscription.status}`);
+      console.log(`condition: ${JSON.stringify(notification.subscription.condition, null, 4)}`);
+    }
+    else {
+      res.sendStatus(204);
+      console.log(`Unknown message type: ${req.headers[MESSAGE_TYPE]}`);
+    }
+  }
+  else {
+      console.log('403');    // Signatures didn't match.
+      res.sendStatus(403);
+  }
 })
 
 /////////////////////////// Set up Websocket ///////////////////////////
@@ -67,6 +150,8 @@ const activeTickets = {};
 const TICKET_EXPIRATION = 60*1000;
 const CHAT_COMMAND = "CHAT_COMMAND";
 const POINTS_REDEMPTION = "POINTS_REDEMPTION";
+const STREAM_START = "STREAM_START";
+const FIRST_CHAT = "FIRST_CHAT";
 
 setupTmiClient();
 openTwitchWebsocket();
@@ -148,6 +233,11 @@ function setupTmiClient() { // Setup TMI to listen to Twitch Chat
   client.on("message", (channel, tags, message, self) => { // Run each time a comment comes in
     let name = tags["display-name"]; // Commenter's Name
 
+    if (!chatters.has(name)) {
+      blastMessage(FIRST_CHAT, {'username': name});
+      chatters.add(name);
+    }
+
     if (message && message.includes("!lurk")) {
       blastMessage(CHAT_COMMAND, {'username': name, 'command': 'lurk'});
     }
@@ -168,9 +258,58 @@ function processChannelPoints(data) {
 }
 
 /////////////////////////// Web Socket Communication ///////////////////////////
+let queuePaused = false;
+const notificationQueue = [];
 
-function blastMessage(type, message) {
-  currentConnections.forEach(ws => ws.send(JSON.stringify({'type': type, 'message': message})));
+async function blastMessage(type, message) {
+  const prefs = await getPreferences(message.username);
+  message["prefs"] = prefs;
+  const event = {'type': type, 'message': message};
+  if (queuePaused) {
+    notificationQueue.push(event)
+  } else {
+    currentConnections.forEach(ws => ws.send(JSON.stringify(event)));
+  }
+}
+
+function processNotificationsQueue() {
+  queuePaused = false;
+  const processQueue = setInterval(() =>{
+    if (notificationQueue.length > 0) {
+      message = notificationQueue.pop();
+      blastMessage(notificationQueue.type, notificationQueue.message)
+    } else {
+      clearInterval(processQueue);
+    }
+  }, 500);
+}
+
+/////////////////////////// Get user preferences //////////////////////////////
+async function getPreferences(username) {
+  if (!(username in userPrefs) || userPrefs[username].expiration < Date.now()) {
+    const prefs = await getPreferencesFromService(username);
+    if (prefs || !(username in userPrefs)) {
+      userPrefs[username] = {
+        "expiration": Date.now() + PREFS_CACHE_TTL,
+        "prefs": prefs
+      }
+    }
+  }
+  return userPrefs[username].prefs;
+}
+
+async function getPreferencesFromService(username) {
+  try {
+    const response = await axios.get(`${PREFS_URL}/prefs?twitchId=${username}`);
+    if (response.status > 299) {
+      console.error(`Error retrieving prefs. ${response.data}`)
+      return null;
+    }
+    return response.data.prefs;
+  } catch (e) {
+    console.log(`No preferences found for ${username}`);
+    return null;
+  }
 }
 
 /////////////////////////// Talk to Twitch API ///////////////////////////
@@ -226,4 +365,21 @@ async function openTwitchWebsocket() {
       processor(JSON.parse(eventData.data.message));
     }
   }
+}
+
+/////////////////////////// Twitch Event Sub Verification ///////////////////////////
+
+// Get the HMAC.
+function getHmac(secret, request) {
+  const message = (request.headers[TWITCH_MESSAGE_ID] + 
+    request.headers[TWITCH_MESSAGE_TIMESTAMP] + 
+    request.body)
+  return crypto.createHmac('sha256', secret)
+  .update(message)
+  .digest('hex');
+}
+
+// Verify whether your signature matches Twitch's signature.
+function verifyMessage(hmac, verifySignature) {
+  return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(verifySignature));
 }

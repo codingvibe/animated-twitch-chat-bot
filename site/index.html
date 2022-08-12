@@ -9,8 +9,8 @@
       <div id="canvas"></div>
     </div>
     <script type="module">
-      let backendServerUrl = 'http://localhost:8080';
-      let backendServerWebsocket = 'ws://localhost:8080'
+      let backendServerUrl = 'http://localhost:9090';
+      let backendServerWebsocket = 'ws://localhost:9090'
       if (location.origin === 'https://twitchoverlay.codingvibe.dev') {
         backendServerUrl = 'https://twitchbotapi.codingvibe.dev';
         backendServerWebsocket = 'wss://twitchbotapi.codingvibe.dev';
@@ -19,11 +19,12 @@
       getWebsocketTicket().then((ticket) => openBackendWebsocket(ticket));
 
       PIXI.settings.SORTABLE_CHILDREN = true;
+      PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST
       const WIDTH = 1920;
       const HEIGHT = 1080;
       const app = new PIXI.Application({
           width: WIDTH, height: HEIGHT,
-          resolution: window.devicePixelRatio || 1, sharedTicker: true,
+          resolution: 1, sharedTicker: true,
           backgroundAlpha: 0
       });
       PIXI.sound.add('order-drink', 'assets/audio/order-coffee-noise.mp3');
@@ -34,27 +35,44 @@
       drinkSpeechContainer.position.set(1630, 527);
       app.stage.addChild(drinkSpeechContainer);
       let orderDrink;
-      const customerSprites = [];
+      let roboMaid;
+      const customerSprites = {};
       const orderDrinkSprites = [];
+      const roboMaidSprites = [];
       const lurkersQueue = [];
       const drinkQueue = [];
+      const greetingQueue = [];
+      let greetingPlaying = false;
       let currentAnimation;
+      const DEFAULT_PREFERENCE = {
+        "LurkAnimation": "customer.png",
+        "FirstMessageAnimation": "customer.png",
+        "DrinkOrder": "garficcino"
+      }
 
-      loader.add('mari', 'assets/customer.png');
+      loader.add('customer.png', 'assets/customer.png');
       loader.add('drink-speech-bubble', 'assets/drink-speech-bubble.png');
       // Order Drink Animation
       const ORDER_DRINK_FRAMES = 60;
       for (let i = 1; i <= ORDER_DRINK_FRAMES; i++) {
         loader.add(`cafe${i}`, `assets/order-drink/cafe${i}.png`);
       }
+      // Order Drink Animation
+      const ROBO_MAID_FRAMES = 47;
+      for (let i = 3; i <= ROBO_MAID_FRAMES; i++) {
+        loader.add(`robomaid${i}`, `assets/maid-robot/${i}.png`);
+      }
       loader.load((loader, resources) => {
         Object.keys(resources).forEach(resourceName => {
           if (resourceName.startsWith("cafe")) {
             orderDrinkSprites.push(resources[resourceName].texture);
-          } else if (resourceName == 'mari') {
-            customerSprites.push(resources[resourceName].texture);
+          } else if (resourceName == 'customer.png') {
+            customerSprites[resourceName] = resources[resourceName].texture;
+          } else if (resourceName.startsWith("robomaid")) {
+            roboMaidSprites.push(resources[resourceName].texture);
           }
         });
+        // Order drink animation
         drinkSpeechBubble.texture = resources['drink-speech-bubble'].texture;
         orderDrink = new PIXI.AnimatedSprite(orderDrinkSprites);
         orderDrink.height = 384;
@@ -69,6 +87,19 @@
           };
         }
         app.stage.addChild(orderDrink);
+
+        // Robo maid animation
+        roboMaid = new PIXI.AnimatedSprite(roboMaidSprites);
+        roboMaid.height = 864;
+        roboMaid.width = 1536;
+        roboMaid.position.set(625, 200);
+        roboMaid.animationSpeed = 0.15;
+        roboMaid.anchor.set(0);
+        roboMaid.loop = false;
+        roboMaid.onComplete = () => {
+          greetingPlaying = false;
+        }
+        app.stage.addChild(roboMaid);
       });
 
       document.getElementById("canvas").appendChild(app.view);
@@ -79,8 +110,8 @@
         if (currentAnimation) {
           processAnimation(currentAnimation);
         } else if (lurkersQueue.length > 0) {
-          const name = lurkersQueue.pop();
-          const container = createLurkCustomer(name);
+          const lurker = lurkersQueue.pop();
+          const container = createLurkCustomer(lurker);
           app.stage.addChild(container);
           currentAnimation = {
             container: container,
@@ -89,6 +120,10 @@
         }
         if (drinkQueue.length > 0 && !orderDrink.playing) {
           playOrderDrink(drinkQueue.pop());
+        }
+
+        if (greetingQueue.length > 0 && !greetingPlaying) {
+          playGreeting(greetingQueue.pop());
         }
         app.renderer.render(app.stage);
       });
@@ -108,10 +143,12 @@
         }
       }
 
-      function createLurkCustomer(name) {
-        const nameTexture = new PIXI.Text(name , {fontFamily : 'Verdana', fontSize: 28, fill : 0xffc182, align : 'center', dropShadow: true, dropShadowDistance: 3});
+      function createLurkCustomer(lurker) {
+        const nameTexture = new PIXI.Text(lurker.username, {fontFamily : 'Verdana', fontSize: 28, fill : 0xffc182, align : 'center', dropShadow: true, dropShadowDistance: 3});
         nameTexture.y = 0;
-        customer.texture = customerSprites[Math.floor(Math.random() * customerSprites.length)];
+        console.log(lurker);
+        console.log(customerSprites[lurker.preference]);
+        customer.texture = customerSprites[lurker.preference];
         customer.x = 0;
         customer.y = nameTexture.height+5;
         const container = new PIXI.Container();
@@ -149,16 +186,25 @@
         ]
       }
 
-      function playOrderDrink(username) {
-        // TODO: PLAY A SOUND TOO
-        PIXI.sound.play('order-drink')
-        const text = `Order for\n${username}\nteleportin'\nyour way!`;
+      function playOrderDrink(drinker) {
+        PIXI.sound.play('order-drink');
+        const text = `${drinker.username}'s\n${drinker.preference}\nteleportin'\nyour way!`;
         const nameTexture = new PIXI.Text(text , {fontFamily : 'Verdana', fontSize: 32, fill : 0xffc182, align : 'left', dropShadow: true, dropShadowDistance: 3});
         nameTexture.y = 20;
         nameTexture.x = 30;
         drinkSpeechContainer.addChild(drinkSpeechBubble);
         drinkSpeechContainer.addChild(nameTexture);
         orderDrink.gotoAndPlay(0);
+      }
+
+      function playGreeting(greeting) {
+        greetingPlaying = true;
+        switch (greeting.preference) {
+          case "robomaid":
+            roboMaid.gotoAndPlay(0);
+          default:
+            roboMaid.gotoAndPlay(0);
+        }
       }
 
       // Back end Websocket Setup and comms
@@ -177,24 +223,51 @@
           if (eventData.type == "CHAT_COMMAND") {
               switch(eventData.message.command) {
                 case "lurk":
-                  lurkersQueue.push(eventData.message.username);
+                  lurkersQueue.push({
+                    "username": eventData.message.username,
+                    "preference": getPreference("LurkAnimation", eventData.message.prefs)
+                  });                  
               }
           } else if (eventData.type == "POINTS_REDEMPTION") {
               switch(eventData.message.command) {
                 case "Boop!":
-                  lurkersQueue.push(eventData.message.username);
+                  lurkersQueue.push({
+                    "username": eventData.message.username,
+                    "preference": getPreference("LurkAnimation", eventData.message.prefs)
+                  });
                   break;
                 case "Order a Coffee!":
-                  drinkQueue.push(eventData.message.username);
+                  drinkQueue.push({
+                    "username": eventData.message.username,
+                    "preference": getPreference("DrinkOrder", eventData.message.prefs)
+                  });
                   break;
                 default:
                   console.log(`got a points redemption for ${eventData.message.command}`)
                   break;
               }
+          } else if (eventData.type == "FIRST_CHAT") {
+            greetingQueue.push({
+                    "username": eventData.message.username,
+                    "preference": getPreference("FirstMessageAnimation", eventData.message.prefs)
+                  })
           }
         }
 
         return backendSocket;
+      }
+
+      function getPreference(preference, preferences) {
+        if (!preferences) return DEFAULT_PREFERENCE[preference]
+        
+        for (const pref of preferences) {
+          if (pref.name == preference && pref.value) {
+            console.log(`returning ${pref.value}`)
+            return pref.value;
+          }
+        };
+
+        return DEFAULT_PREFERENCE[preference]
       }
     </script>
   </body>
