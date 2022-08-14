@@ -28,12 +28,17 @@
           backgroundAlpha: 0
       });
       PIXI.sound.add('order-drink', 'assets/audio/order-coffee-noise.mp3');
+      PIXI.sound.add('robo-maid', 'assets/audio/robo-maid.mp3');
       const loader = PIXI.Loader.shared;
       const customer = new PIXI.Sprite();
       const drinkSpeechBubble = new PIXI.Sprite();
       const drinkSpeechContainer = new PIXI.Container();
       drinkSpeechContainer.position.set(1630, 527);
       app.stage.addChild(drinkSpeechContainer);
+      const roboMaidGreeting = new PIXI.Sprite();
+      const roboMaidGreetingContainer = new PIXI.Container();
+      roboMaidGreetingContainer.position.set(1200, 525);
+      app.stage.addChild(roboMaidGreetingContainer)
       let orderDrink;
       let roboMaid;
       const customerSprites = {};
@@ -52,6 +57,7 @@
 
       loader.add('customer.png', 'assets/customer.png');
       loader.add('drink-speech-bubble', 'assets/drink-speech-bubble.png');
+      loader.add('greeting-robomaid', 'assets/robomaid-greeting.png')
       // Order Drink Animation
       const ORDER_DRINK_FRAMES = 60;
       for (let i = 1; i <= ORDER_DRINK_FRAMES; i++) {
@@ -89,6 +95,7 @@
         app.stage.addChild(orderDrink);
 
         // Robo maid animation
+        roboMaidGreeting.texture = resources['greeting-robomaid'].texture;
         roboMaid = new PIXI.AnimatedSprite(roboMaidSprites);
         roboMaid.height = 864;
         roboMaid.width = 1536;
@@ -98,6 +105,9 @@
         roboMaid.loop = false;
         roboMaid.onComplete = () => {
           greetingPlaying = false;
+          while (roboMaidGreetingContainer.children && roboMaidGreetingContainer.children.length > 0) {
+            roboMaidGreetingContainer.removeChild(roboMaidGreetingContainer.children[0]);
+          };
         }
         app.stage.addChild(roboMaid);
       });
@@ -197,13 +207,27 @@
         orderDrink.gotoAndPlay(0);
       }
 
+      function playRoboMaid(username) {
+        PIXI.sound.play('robo-maid');
+
+        setTimeout(() => {
+          const text = `Hi\n${username}!`;
+          const nameTexture = new PIXI.Text(text , {fontFamily : 'Verdana', fontSize: 40, fill : 0xffc182, align : 'left', dropShadow: true, dropShadowDistance: 3});
+          nameTexture.y = 20;
+          nameTexture.x = 30;
+          roboMaidGreetingContainer.addChild(roboMaidGreeting);
+          roboMaidGreetingContainer.addChild(nameTexture);
+        }, 2000)
+        roboMaid.gotoAndPlay(0);
+      }
+
       function playGreeting(greeting) {
         greetingPlaying = true;
         switch (greeting.preference) {
           case "robomaid":
-            roboMaid.gotoAndPlay(0);
+            playRoboMaid(greeting.username);
           default:
-            roboMaid.gotoAndPlay(0);
+            playRoboMaid(greeting.username);
         }
       }
 

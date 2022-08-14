@@ -65,7 +65,6 @@ var corsOptions = {
 
 app.use([
   express.raw({ type: 'application/json'}), // Need raw message body for signature verification
-  cors(corsOptions) // CORS because I'm coding this on stream and NOT doing CORS is cringe
 ]);
 
 let server;
@@ -88,7 +87,7 @@ TODO:
 
 /////////////////////////// Set up REST ///////////////////////////
 
-app.get('/ticket', (req, res) => {
+app.get('/ticket', cors(corsOptions), (req, res) => {
   const origin = req.get('origin');
   const ticket = generateTicket(origin);
   res.send({ticket:ticket});
