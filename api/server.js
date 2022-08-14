@@ -27,6 +27,9 @@ const TWITCH_MESSAGE_TIMESTAMP = 'Twitch-Eventsub-Message-Timestamp'.toLowerCase
 const TWITCH_MESSAGE_SIGNATURE = 'Twitch-Eventsub-Message-Signature'.toLowerCase();
 const MESSAGE_TYPE = 'Twitch-Eventsub-Message-Type'.toLowerCase();
 
+// Prepend this string to the HMAC that's created from the message
+const HMAC_PREFIX = 'sha256=';
+
 // Twitch Event Sub Notification message types
 const MESSAGE_TYPE_VERIFICATION = 'webhook_callback_verification';
 const MESSAGE_TYPE_NOTIFICATION = 'notification';
@@ -80,7 +83,6 @@ if (DEPLOYED) {
 
 /*
 TODO:
-- test start-notifications
 - get the speech bubble working
 */
 
@@ -108,11 +110,11 @@ app.post('/eventsub', (req, res) => {
         switch (notification.subscription.type) {
           case STREAM_ONLINE:
             chatters.clear();
-            notificationQueue.clear();
+            notificationQueue = [];
             queuePaused = true;
             setTimeout(() => {
               processNotificationsQueue();
-            }, 5*60*1000); // TODO, SET THIS TO SOMETHING LARGER
+            }, 30*60*1000);
             break;
           default:
             //do nothing;
@@ -259,7 +261,7 @@ function processChannelPoints(data) {
 
 /////////////////////////// Web Socket Communication ///////////////////////////
 let queuePaused = false;
-const notificationQueue = [];
+let notificationQueue = [];
 
 async function blastMessage(type, message) {
   const prefs = await getPreferences(message.username);
@@ -276,8 +278,8 @@ function processNotificationsQueue() {
   queuePaused = false;
   const processQueue = setInterval(() =>{
     if (notificationQueue.length > 0) {
-      message = notificationQueue.pop();
-      blastMessage(notificationQueue.type, notificationQueue.message)
+      let notification = notificationQueue.pop();
+      blastMessage(notification.type, notification.message)
     } else {
       clearInterval(processQueue);
     }
