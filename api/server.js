@@ -80,11 +80,6 @@ if (DEPLOYED) {
   server.listen(APP_PORT);
 }
 
-/*
-TODO:
-- get the speech bubble working
-*/
-
 /////////////////////////// Set up REST ///////////////////////////
 
 app.get('/ticket', cors(corsOptions), (req, res) => {

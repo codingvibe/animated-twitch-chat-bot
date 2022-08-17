@@ -47,7 +47,7 @@
       const lurkersQueue = [];
       const drinkQueue = [];
       const greetingQueue = [];
-      let greetingPlaying = false;
+      let animationIsPlaying = false;
       let currentAnimation;
       const DEFAULT_PREFERENCE = {
         "LurkAnimation": "customer.png",
@@ -88,6 +88,7 @@
         orderDrink.anchor.set(0);
         orderDrink.loop = false;
         orderDrink.onComplete = () => {
+          animationIsPlaying = false;
           while (drinkSpeechContainer.children && drinkSpeechContainer.children.length > 0) {
             drinkSpeechContainer.removeChild(drinkSpeechContainer.children[0]);
           };
@@ -104,7 +105,7 @@
         roboMaid.anchor.set(0);
         roboMaid.loop = false;
         roboMaid.onComplete = () => {
-          greetingPlaying = false;
+          animationIsPlaying = false;
           while (roboMaidGreetingContainer.children && roboMaidGreetingContainer.children.length > 0) {
             roboMaidGreetingContainer.removeChild(roboMaidGreetingContainer.children[0]);
           };
@@ -119,20 +120,26 @@
       ticker.add(function (time) {
         if (currentAnimation) {
           processAnimation(currentAnimation);
-        } else if (lurkersQueue.length > 0) {
+        } else if (!animationIsPlaying && lurkersQueue.length > 0) {
+          animationIsPlaying = true;
           const lurker = lurkersQueue.pop();
           const container = createLurkCustomer(lurker);
           app.stage.addChild(container);
           currentAnimation = {
             container: container,
             animations: getLurkAnimation()
-          }
+          };
         }
-        if (drinkQueue.length > 0 && !orderDrink.playing) {
+        if (animationIsPlaying) {
+          return;
+        }
+        if (drinkQueue.length > 0) {
+          animationIsPlaying = true;
           playOrderDrink(drinkQueue.pop());
         }
 
-        if (greetingQueue.length > 0 && !greetingPlaying) {
+        if (greetingQueue.length > 0) {
+          animationIsPlaying = true;
           playGreeting(greetingQueue.pop());
         }
         app.renderer.render(app.stage);
@@ -146,6 +153,7 @@
           currentAnimation.container.y += curMovement.stepSize;
         }
         if (curMovement.stopCondition(currentAnimation.container)) {
+          animationIsPlaying = false;
           currentAnimation.animations.shift();
           if (currentAnimation.animations.length === 0) {
             currentAnimation = null;
@@ -156,8 +164,6 @@
       function createLurkCustomer(lurker) {
         const nameTexture = new PIXI.Text(lurker.username, {fontFamily : 'Verdana', fontSize: 28, fill : 0xffc182, align : 'center', dropShadow: true, dropShadowDistance: 3});
         nameTexture.y = 0;
-        console.log(lurker);
-        console.log(customerSprites[lurker.preference]);
         customer.texture = customerSprites[lurker.preference];
         customer.x = 0;
         customer.y = nameTexture.height+5;
@@ -222,7 +228,6 @@
       }
 
       function playGreeting(greeting) {
-        greetingPlaying = true;
         switch (greeting.preference) {
           case "robomaid":
             playRoboMaid(greeting.username);
@@ -274,7 +279,7 @@
             greetingQueue.push({
               "username": eventData.message.username,
               "preference": getPreference("FirstMessageAnimation", eventData.message.prefs)
-            })
+            });
           }
         }
 
