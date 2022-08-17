@@ -205,9 +205,15 @@
       function playOrderDrink(drinker) {
         PIXI.sound.play('order-drink');
         const text = `${drinker.username}'s\n${drinker.preference}\nteleportin'\nyour way!`;
-        const nameTexture = new PIXI.Text(text , {fontFamily : 'Verdana', fontSize: 32, fill : 0xffc182, align : 'left', dropShadow: true, dropShadowDistance: 3});
-        nameTexture.y = 20;
+        const nameTexture = new PIXI.Text(text , {fontFamily : 'Verdana', fontSize: 32, fill : 0xffc182, align : 'left', dropShadow: true, dropShadowDistance: 3, wordWrap: true, wordWrapWidth: drinkSpeechBubble.width-2});
+        nameTexture.y = 10;
         nameTexture.x = 30;
+        if (nameTexture.height > drinkSpeechBubble.height -20 ) {
+          nameTexture.height = drinkSpeechBubble.height - 20;
+        }
+        if (nameTexture.width > drinkSpeechBubble.width - 30) {
+          nameTexture.width = drinkSpeechBubble.width - 40;
+        }
         drinkSpeechContainer.addChild(drinkSpeechBubble);
         drinkSpeechContainer.addChild(nameTexture);
         orderDrink.gotoAndPlay(0);
