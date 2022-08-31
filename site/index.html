@@ -50,12 +50,12 @@
       let animationIsPlaying = false;
       let currentAnimation;
       const DEFAULT_PREFERENCE = {
-        "LurkAnimation": "customer.png",
-        "FirstMessageAnimation": "customer.png",
+        "LurkAnimation": "customer",
+        "FirstMessageAnimation": "customer",
         "DrinkOrder": "garficcino"
       }
 
-      loader.add('customer.png', 'assets/customer.png');
+      loader.add('customer', 'assets/customer.png');
       loader.add('drink-speech-bubble', 'assets/drink-speech-bubble.png');
       loader.add('greeting-robomaid', 'assets/robomaid-greeting.png')
       // Order Drink Animation
@@ -72,7 +72,7 @@
         Object.keys(resources).forEach(resourceName => {
           if (resourceName.startsWith("cafe")) {
             orderDrinkSprites.push(resources[resourceName].texture);
-          } else if (resourceName == 'customer.png') {
+          } else if (resourceName == 'customer') {
             customerSprites[resourceName] = resources[resourceName].texture;
           } else if (resourceName.startsWith("robomaid")) {
             roboMaidSprites.push(resources[resourceName].texture);
