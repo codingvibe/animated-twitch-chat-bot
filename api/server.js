@@ -38,9 +38,6 @@ const MESSAGE_TYPE_REVOCATION = 'revocation';
 // Twitch Event Sub Notification subscription types
 const STREAM_ONLINE = "stream.online";
 
-// user prefs cache
-const userPrefs = {};
-
 // Users Chatting cache
 const chatters = new Set();
 
@@ -277,21 +274,13 @@ function processNotificationsQueue() {
     } else {
       clearInterval(processQueue);
     }
-  }, 500);
+  }, 2000);
 }
 
 /////////////////////////// Get user preferences //////////////////////////////
 async function getPreferences(username) {
-  if (!(username in userPrefs) || userPrefs[username].expiration < Date.now()) {
-    const prefs = await getPreferencesFromService(username);
-    if (prefs || !(username in userPrefs)) {
-      userPrefs[username] = {
-        "expiration": Date.now() + PREFS_CACHE_TTL,
-        "prefs": prefs
-      }
-    }
-  }
-  return userPrefs[username].prefs;
+  // This is where cache once stood proudly. No longer. RIP.
+  return await getPreferencesFromService(username);
 }
 
 async function getPreferencesFromService(username) {
@@ -309,7 +298,6 @@ async function getPreferencesFromService(username) {
 }
 
 /////////////////////////// Talk to Twitch API ///////////////////////////
-
 async function getTwitchAuthToken(clientId, clientSecret, accessToken, refreshToken) {
   const authUrl = `https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=refresh_token&refresh_token=${refreshToken}`
   const response = await axios.post(authUrl);
