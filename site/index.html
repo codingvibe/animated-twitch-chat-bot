@@ -3,12 +3,14 @@
   <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.2.2/browser/pixi.js"></script>
     <script src="https://unpkg.com/@pixi/sound@4.3.1/dist/pixi-sound.js"></script>
+    <script src="./assets/animations/drip-goku.js" type="module"></script>
   </head>
   <body>
     <div id="body">
       <div id="canvas"></div>
     </div>
     <script type="module">
+      import dripGokuAnimations from "./assets/animations/drip-goku.js";
       let backendServerUrl = 'http://localhost:9090';
       let backendServerWebsocket = 'ws://localhost:9090'
       if (location.origin === 'https://twitchoverlay.codingvibe.dev') {
@@ -27,10 +29,14 @@
           resolution: 1, sharedTicker: true,
           backgroundAlpha: 0
       });
+      PIXI.sound.add('drip-goku', 'assets/audio/drip-goku.mp3');
+      PIXI.sound.add('drip-goku-extended', 'assets/audio/drip-goku-extended.mp3');
+      PIXI.sound.add('vegeta-drip-goku', 'assets/audio/vegeta-drip-goku.mp3');
       PIXI.sound.add('order-drink', 'assets/audio/order-coffee-noise.mp3');
       PIXI.sound.add('robo-maid', 'assets/audio/robo-maid.mp3');
       const loader = PIXI.Loader.shared;
       const customer = new PIXI.Sprite();
+      const dripGoku = new PIXI.Sprite();
       const drinkSpeechBubble = new PIXI.Sprite();
       const drinkSpeechContainer = new PIXI.Container();
       drinkSpeechContainer.position.set(1630, 527);
@@ -45,6 +51,7 @@
       const orderDrinkSprites = [];
       const roboMaidSprites = [];
       const lurkersQueue = [];
+      const boopQueue = [];
       const drinkQueue = [];
       const greetingQueue = [];
       let animationIsPlaying = false;
@@ -56,6 +63,10 @@
       }
 
       loader.add('customer', 'assets/customer.png');
+      loader.add('drip-goku', 'assets/drip-goku.png');
+      loader.add('ssj-drip-goku', 'assets/ssj-drip-goku.png');
+      loader.add('ultra-instinct-drip-goku', 'assets/ultra-instinct-drip-goku.png');
+      loader.add('vegeta-drip-goku', 'assets/vegeta-drip-goku.png');
       loader.add('drink-speech-bubble', 'assets/drink-speech-bubble.png');
       loader.add('greeting-robomaid', 'assets/robomaid-greeting.png')
       // Order Drink Animation
@@ -76,6 +87,8 @@
             customerSprites[resourceName] = resources[resourceName].texture;
           } else if (resourceName.startsWith("robomaid")) {
             roboMaidSprites.push(resources[resourceName].texture);
+          } else if (resourceName.endsWith('drip-goku')) {
+            customerSprites[resourceName] = resources[resourceName].texture;
           }
         });
         // Order drink animation
@@ -120,6 +133,31 @@
       ticker.add(function (time) {
         if (currentAnimation) {
           processAnimation(currentAnimation);
+        } else if (!animationIsPlaying && boopQueue.length > 0) {
+          animationIsPlaying = true;
+          const booper = boopQueue.pop();
+          let gokuSprite = customerSprites['drip-goku'];
+          let audio = 'drip-goku-extended';
+          let character = 'goku'
+          const vegeta = Math.random() < 0.1;
+          const ultraInstinctTime = Math.random() < 0.01;
+          const ssjTime = Math.random() < 0.1;
+          if (ultraInstinctTime) {
+            gokuSprite = customerSprites['ultra-instinct-drip-goku'];
+          } else if (vegeta) {
+            character = 'vegeta';
+            gokuSprite = customerSprites['vegeta-drip-goku'];
+            audio = 'vegeta-drip-goku';
+          } else if (ssjTime) {
+            gokuSprite = customerSprites['ssj-drip-goku'];
+          }
+          const container = dripGokuAnimations[character].getSprite(dripGoku, gokuSprite);
+          PIXI.sound.play(audio);
+          app.stage.addChild(container);
+          currentAnimation = {
+            container: container,
+            animations: dripGokuAnimations[character].getAnimationDefinition(dripGoku, HEIGHT, WIDTH)
+          };
         } else if (!animationIsPlaying && lurkersQueue.length > 0) {
           animationIsPlaying = true;
           const lurker = lurkersQueue.pop();
@@ -151,8 +189,14 @@
           currentAnimation.container.y -= curMovement.stepSize;
         } else if (curMovement.type === "MOVE_DOWN") {
           currentAnimation.container.y += curMovement.stepSize;
+        } else if (curMovement.type === "MOVE_LEFT") {
+          currentAnimation.container.x -= curMovement.stepSize;
+        } else if (curMovement.type === "MOVE_RIGHT") {
+          currentAnimation.container.x += curMovement.stepSize;
+        } else if (curMovement.type === "REPOSITION") {
+          currentAnimation.container.setTransform(curMovement.x, curMovement.y, curMovement.scaleX, curMovement.scaleY, curMovement.rotation);
         }
-        if (curMovement.stopCondition(currentAnimation.container)) {
+        if (!curMovement.stopCondition || curMovement.stopCondition(currentAnimation.container)) {
           animationIsPlaying = false;
           currentAnimation.animations.shift();
           if (currentAnimation.animations.length === 0) {
@@ -266,7 +310,7 @@
           } else if (eventData.type == "POINTS_REDEMPTION") {
               switch(eventData.message.command) {
                 case "Boop!":
-                  lurkersQueue.push({
+                  boopQueue.push({
                     "username": eventData.message.username,
                     "preference": getPreference("LurkAnimation", eventData.message.prefs)
                   });
