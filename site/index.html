@@ -3,6 +3,8 @@
   <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.2.2/browser/pixi.js"></script>
     <script src="https://unpkg.com/@pixi/sound@4.3.1/dist/pixi-sound.js"></script>
+    <script src="./js/stomp.min.js"></script>
+    <script src="./js/sockjs.min.js"></script>
     <script src="./assets/animations/drip-goku.js" type="module"></script>
   </head>
   <body>
@@ -12,13 +14,11 @@
     <script type="module">
       import dripGokuAnimations from "./assets/animations/drip-goku.js";
       let backendServerUrl = 'http://localhost:9090';
-      let backendServerWebsocket = 'ws://localhost:9090'
       if (location.origin === 'https://twitchoverlay.codingvibe.dev') {
         backendServerUrl = 'https://twitchbotapi.codingvibe.dev';
-        backendServerWebsocket = 'wss://twitchbotapi.codingvibe.dev';
       }
 
-      getWebsocketTicket().then((ticket) => openBackendWebsocket(ticket));
+      openBackendWebsocket();
 
       PIXI.settings.SORTABLE_CHILDREN = true;
       PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST
@@ -63,12 +63,13 @@
       }
 
       loader.add('customer', 'assets/customer.png');
+      loader.add('finedog', 'assets/finedog.png');
       loader.add('drip-goku', 'assets/drip-goku.png');
       loader.add('ssj-drip-goku', 'assets/ssj-drip-goku.png');
       loader.add('ultra-instinct-drip-goku', 'assets/ultra-instinct-drip-goku.png');
       loader.add('vegeta-drip-goku', 'assets/vegeta-drip-goku.png');
       loader.add('drink-speech-bubble', 'assets/drink-speech-bubble.png');
-      loader.add('greeting-robomaid', 'assets/robomaid-greeting.png')
+      loader.add('greeting-robomaid', 'assets/robomaid-greeting.png');
       // Order Drink Animation
       const ORDER_DRINK_FRAMES = 60;
       for (let i = 1; i <= ORDER_DRINK_FRAMES; i++) {
@@ -88,6 +89,8 @@
           } else if (resourceName.startsWith("robomaid")) {
             roboMaidSprites.push(resources[resourceName].texture);
           } else if (resourceName.endsWith('drip-goku')) {
+            customerSprites[resourceName] = resources[resourceName].texture;
+          } else if (resourceName == 'finedog') {
             customerSprites[resourceName] = resources[resourceName].texture;
           }
         });
@@ -287,53 +290,54 @@
       }
 
       // Back end Websocket Setup and comms
-      async function getWebsocketTicket() {
-        const response = await fetch(`${backendServerUrl}/ticket`);
-        const data = await response.json();
-        return data['ticket'];
-      }
-
-      function openBackendWebsocket(ticket) {
-        const backendSocket = new WebSocket(`${backendServerWebsocket}/?ticket=${ticket}`);
-
-        backendSocket.onmessage = (event) => {
-          const eventData = JSON.parse(event.data);
-          console.log(eventData);
-          if (eventData.type == "CHAT_COMMAND") {
-              switch(eventData.message.command) {
-                case "lurk":
-                  lurkersQueue.push({
-                    "username": eventData.message.username,
-                    "preference": getPreference("LurkAnimation", eventData.message.prefs)
-                  });                  
+      function openBackendWebsocket() {
+        const socket = new SockJS("http://localhost:8085/notifications");
+        const stompClient = Stomp.over(socket);
+        stompClient.debug = () => {};
+        stompClient.connect({}, function(frame) {
+            stompClient.subscribe('/topic/twitchCommand', function(messageOutput) {
+              const eventData = JSON.parse(messageOutput.body);
+              console.log(eventData)
+              if (eventData.type == "CHAT_COMMAND") {
+                  switch(eventData.message.command) {
+                    case "lurk":
+                      lurkersQueue.push({
+                        "username": eventData.message.username,
+                        "preference": getPreference("LurkAnimation", eventData.message.prefs)
+                      });
+                      break;
+                    case "fine":
+                      lurkersQueue.push({
+                        "username": eventData.message.username,
+                        "preference": "finedog"
+                      });
+                  }
+              } else if (eventData.type == "POINTS_REDEMPTION") {
+                  switch(eventData.message.command) {
+                    case "Summon Drip Goku":
+                      boopQueue.push({
+                        "username": eventData.message.username,
+                        "preference": getPreference("LurkAnimation", eventData.message.prefs)
+                      });
+                      break;
+                    case "Order a Coffee!":
+                      drinkQueue.push({
+                        "username": eventData.message.username,
+                        "preference": getPreference("DrinkOrder", eventData.message.prefs)
+                      });
+                      break;
+                    default:
+                      console.log(`got a points redemption for ${eventData.message.command}`)
+                      break;
+                  }
+              } else if (eventData.type == "FIRST_CHAT") {
+                greetingQueue.push({
+                  "username": eventData.message.username,
+                  "preference": getPreference("FirstMessageAnimation", eventData.message.prefs)
+                });
               }
-          } else if (eventData.type == "POINTS_REDEMPTION") {
-              switch(eventData.message.command) {
-                case "Summon Drip Goku":
-                  boopQueue.push({
-                    "username": eventData.message.username,
-                    "preference": getPreference("LurkAnimation", eventData.message.prefs)
-                  });
-                  break;
-                case "Order a Coffee!":
-                  drinkQueue.push({
-                    "username": eventData.message.username,
-                    "preference": getPreference("DrinkOrder", eventData.message.prefs)
-                  });
-                  break;
-                default:
-                  console.log(`got a points redemption for ${eventData.message.command}`)
-                  break;
-              }
-          } else if (eventData.type == "FIRST_CHAT") {
-            greetingQueue.push({
-              "username": eventData.message.username,
-              "preference": getPreference("FirstMessageAnimation", eventData.message.prefs)
             });
-          }
-        }
-
-        return backendSocket;
+        });
       }
 
       function getPreference(preference, preferences) {
