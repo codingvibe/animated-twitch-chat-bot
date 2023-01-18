@@ -13,7 +13,7 @@
     </div>
     <script type="module">
       import dripGokuAnimations from "./assets/animations/drip-goku.js";
-      let backendServerUrl = 'http://localhost:9090';
+      let backendServerUrl = 'http://localhost:8085';
       if (location.origin === 'https://twitchoverlay.codingvibe.dev') {
         backendServerUrl = 'https://twitchbotapi.codingvibe.dev';
       }
@@ -291,7 +291,7 @@
 
       // Back end Websocket Setup and comms
       function openBackendWebsocket() {
-        const socket = new SockJS("http://localhost:8085/notifications");
+        const socket = new SockJS(`${backendServerUrl}/notifications`);
         const stompClient = Stomp.over(socket);
         stompClient.debug = () => {};
         stompClient.connect({}, function(frame) {
